@@ -374,6 +374,7 @@ export async function reloadOpenTabs({ onlyIfChanged = false } = {}) {
       d.folds = keep.folds;
       if (d.folds) { d.folds.pixelOffsets = null; d.folds.pixelVersion = -1; }
       d.foldLoaded = keep.foldLoaded; d.foldLimited = keep.foldLimited;
+      d.foldError = keep.foldError;
     }
     S.tabs[idx] = d;
     releaseDocFolds(keep);

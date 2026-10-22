@@ -178,6 +178,29 @@ function exitVisualMode() {
   updateVimStatus();
 }
 
+async function runVisualAction(action) {
+  const d = doc_();
+  const anchor = d?.selAnchor;
+  const info = getSelectedRangeInfo();
+  try {
+    // Keep the selection alive until hidden source arrives. Clearing it first
+    // cancels the fetch; using info.text immediately would copy an empty string.
+    if (info?.load && action !== 'copy-ref') await info.load();
+    if (doc_() !== d || d.selAnchor !== anchor || vimMode === 'NORMAL') return;
+    if (action === 'yank') {
+      if (info?.text) {
+        const lines = info.l2 - info.l1 + 1;
+        copyToClipboard(info.text, 'Yanked ' + (lines === 1 ? '1 line' : lines + ' lines'));
+      }
+    } else {
+      runSelectionAction(action, null, info);
+    }
+    exitVisualMode();
+  } catch (e) {
+    if (e.name !== 'AbortError') showToast('!', e.message);
+  }
+}
+
 function ensureLineSelection() {
   const d = doc_();
   if (!d || vimMode !== 'VISUAL_LINE') return;
@@ -283,30 +306,22 @@ export function handleVimKeyDown(e) {
     }
     if (e.key === 'y') {
       e.preventDefault();
-      const info = getSelectedRangeInfo();
-      if (info && info.text) {
-        const lineCount = info.l2 - info.l1 + 1;
-        copyToClipboard(info.text, 'Yanked ' + (lineCount === 1 ? '1 line' : lineCount + ' lines'));
-      }
-      exitVisualMode();
+      runVisualAction('yank');
       return true;
     }
     if (e.key === 'Y') {
       e.preventDefault();
-      runSelectionAction('copy-ref');
-      exitVisualMode();
+      runVisualAction('copy-ref');
       return true;
     }
     if (e.key === 'e' || e.key === 'c') {
       e.preventDefault();
-      runSelectionAction('agent-edit');
-      exitVisualMode();
+      runVisualAction('agent-edit');
       return true;
     }
     if (e.key === 'u') {
       e.preventDefault();
-      runSelectionAction('usages');
-      exitVisualMode();
+      runVisualAction('usages');
       return true;
     }
   }

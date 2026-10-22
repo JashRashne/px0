@@ -71,6 +71,10 @@ A selection spanning folded lines is resolved on demand using
 source slice encoded as JSON without highlighting or populating hidden chunks.
 The browser retains at most the current selected snippet, releases it when
 selection ends, and waits for complete text before copy/edit/thread actions.
+Vim visual actions keep the selection alive while that request resolves, then
+act only if the document, selection anchor, and visual mode still match. Leaving
+direct edit mode expands folds enclosing the returned source anchor. Unchanged
+refreshes retain a detection error so explicit fold commands can retry it.
 
 ## Verification
 
@@ -80,6 +84,9 @@ covers endpoint access/version checks and document invalidation.
 `web/src/folding.test.js` checks all collapse combinations against a naive model,
 nested state, EOF movement, wrapped geometry, and sparse storage for a
 400,000-line document.
+`web/src/folding-interactions.test.js` exercises the real Vim and edit-mode
+handlers with mocked service/UI boundaries: delayed hidden-source actions,
+cancellation, load failure, and returning to a source line inside nested folds.
 
 Run `node scripts/bench-folding.js` for browser-model lookup timings and typed
 storage size, and `go test ./internal/render -run '^$' -bench 'Fold' -benchmem`
