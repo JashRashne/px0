@@ -1,7 +1,7 @@
 // web/src/vim.js
 import { $, esc, S, doc_, keyCaps, LH } from './state.js';
 import { vp, sizer, copyToClipboard, showToast } from './ui.js';
-import { render, paint, rowFor, placeCaret, getLH, lineTopY, lineAtScrollY } from './renderer.js';
+import { render, paint, rowFor, placeCaret, getLH, lineTopY, lineAtScrollY, revealSourceLine } from './renderer.js';
 import { moveCursor, moveCol, moveWord, caretToEdge, updateDomSelection, clearSelection, revealCaretX } from './cursor.js';
 import { updateStatus } from './status.js';
 import { gotoDefinition, findReferences } from './lsp.js';
@@ -13,6 +13,7 @@ import { switchTab, closeTab } from './tabs.js';
 import { getSelectedRangeInfo, runSelectionAction } from './selbar.js';
 import { openPalette } from './palette.js';
 import { showHelp } from './shortcuts.js';
+import { runFoldAction } from './folding-ui.js';
 
 let vimEnabled = false;
 let vimMode = 'NORMAL'; // 'NORMAL' | 'VISUAL' | 'VISUAL_LINE'
@@ -332,6 +333,7 @@ export function handleVimKeyDown(e) {
         d.cur = Math.max(1, Math.min(d.total, count));
         d.col = 0;
         const lh = getLH();
+        revealSourceLine(d.cur, d);
         const y = lineTopY(d.cur, d);
         vp.scrollTop = Math.max(0, y - lh * 3);
         render(); updateStatus();
@@ -380,8 +382,11 @@ export function handleVimKeyDown(e) {
   if (vimPending === 'z') {
     e.preventDefault();
     const lh = getLH();
+    revealSourceLine(d.cur, d);
     const y = lineTopY(d.cur, d);
-    if (e.key === 'z') {
+    if (['c', 'o', 'a', 'M', 'R'].includes(e.key)) {
+      runFoldAction(({ c: 'fold', o: 'unfold', a: 'toggle', M: 'all', R: 'none' })[e.key]);
+    } else if (e.key === 'z') {
       // zz: Center current line in viewport
       vp.scrollTop = Math.max(0, y - (vp.clientHeight - lh) / 2);
       render(); updateStatus();
@@ -471,6 +476,7 @@ export function handleVimKeyDown(e) {
       d.cur = Math.max(1, Math.min(d.total, targetLine));
       d.col = 0;
       const lh = getLH();
+      revealSourceLine(d.cur, d);
       const y = lineTopY(d.cur, d);
       vp.scrollTop = Math.max(0, y - lh * 3);
       render(); updateStatus();
@@ -611,6 +617,8 @@ export const VIM_SHORTCUT_SECTIONS = [
       [['gg', 'G'], 'First line / last line (or [count]gg / [count]G)'],
       [['Ctrl+d', 'Ctrl+u'], 'Scroll half-page down / up'],
       [['Ctrl+f', 'Ctrl+b'], 'Scroll full-page down / up'],
+      [['zc', 'zo', 'za'], 'Fold / unfold / toggle block'],
+      [['zM', 'zR'], 'Fold all / unfold all'],
       [['zz', 'zt', 'zb'], 'Center line / line to top / line to bottom'],
       [['H', 'M', 'L'], 'Move to top, middle, bottom visible line'],
     ]
